@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Global Crisis Tracker</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+        <header class="app-header">
+            <div class="header-content">
+                <h1>Global Crisis Tracker</h1>
+                <div class="header-actions">
+                    <button id="refresh-btn" class="icon-btn" aria-label="Refresh">
+                        <i class="fas fa-sync-alt"></i>
+                    </button>
+                    <button id="filter-btn" class="icon-btn" aria-label="Filter">
+                        <i class="fas fa-sliders-h"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="search-bar">
+                <input type="text" id="search-input" placeholder="Search crises...">
+                <button id="search-btn" class="icon-btn">
+                    <i class="fas fa-search"></i>
+                </button>
+            </div>
+        </header>
+
+        <div class="filter-panel hidden" id="filter-panel">
+            <div class="filter-group">
+                <label for="type-filter">CRISIS TYPE</label>
+                <select id="type-filter">
+                    <option value="all">All Types</option>
+                    <option value="natural">Natural Disaster</option>
+                    <option value="conflict">Conflict</option>
+                    <option value="health">Health Emergency</option>
+                    <option value="economic">Economic Crisis</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label for="severity-filter">SEVERITY LEVEL</label>
+                <select id="severity-filter">
+                    <option value="all">All Levels</option>
+                    <option value="low">Low</option>
+                    <option value="medium">Medium</option>
+                    <option value="high">High</option>
+                    <option value="critical">Critical</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label for="region-filter">REGION</label>
+                <select id="region-filter">
+                    <option value="all">All Regions</option>
+                    <option value="africa">Africa</option>
+                    <option value="americas">Americas</option>
+                    <option value="asia">Asia</option>
+                    <option value="europe">Europe</option>
+                    <option value="oceania">Oceania</option>
+                </select>
+            </div>
+            <button id="apply-filters" class="primary-btn">Apply Filters</button>
+        </div>
+
+        <main class="crisis-list" id="crisis-list">
+            <!-- Crisis cards will be dynamically inserted here -->
+            <div class="loading-spinner">
+                <div class="spinner"></div>
+                <p>Loading crisis data...</p>
+            </div>
+        </main>
+
+        <div class="map-view hidden" id="map-view">
+            <div class="map-controls">
+                <div class="map-legend">
+                    <div class="legend-item"><span class="critical"></span> Critical</div>
+                    <div class="legend-item"><span class="high"></span> High</div>
+                    <div class="legend-item"><span class="medium"></span> Medium</div>
+                    <div class="legend-item"><span class="low"></span> Low</div>
+                </div>
+                <div class="timeline-controls">
+                    <button id="play-timeline" class="control-btn">
+                        <i class="fas fa-play"></i> Play Timeline
+                    </button>
+                    <input type="range" id="timeline-slider" min="0" max="100" value="100">
+                </div>
+            </div>
+            <div id="map" class="map-container"></div>
+            <div class="crisis-details-panel hidden" id="details-panel">
+                <button id="close-panel" class="close-btn">
+                    <i class="fas fa-times"></i>
+                </button>
+                <div class="panel-content" id="panel-content"></div>
+            </div>
+        </div>
+
+        <footer class="app-footer">
+            <button id="list-view-btn" class="footer-btn active">
+                <i class="fas fa-list"></i>
+                <span>List</span>
+            </button>
+            <button id="map-view-btn" class="footer-btn">
+                <i class="fas fa-map-marked-alt"></i>
+                <span>Map</span>
+            </button>
+            <button id="analytics-btn" class="footer-btn">
+                <i class="fas fa-chart-pie"></i>
+                <span>Analytics</span>
+            </button>
+        </footer>
+    </div>
+
+    <script src="script.js"></script>
+    <script src="https://maps.googleapis.com/maps/api/js?key=YOUR_API_KEY&callback=initMap" async defer></script>
+</body>
+</html>
