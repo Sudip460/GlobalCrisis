@@ -5,61 +5,18 @@ const alertBadge = document.getElementById('alert-badge');
 const timeFilter = document.getElementById('time-filter');
 const liveAlertText = document.getElementById('live-alert-text');
 const navButtons = document.querySelectorAll('.nav-btn');
-
-// Sample Crisis Data
-const crisisData = [
-    {
-        id: 'crisis-1',
-        title: 'Escalating Conflict in Sudan',
-        type: 'Conflict',
-        severity: 'Critical',
-        location: 'Khartoum, Sudan',
-        description: 'Heavy fighting reported between military factions with over 120 civilian casualties in the past 24 hours. Humanitarian access severely restricted.',
-        image: 'https://images.unsplash.com/photo-1580052614034-c55d20bfee3b?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=800&q=80',
-        date: '2023-06-15T14:32:00Z',
-        casualties: 120,
-        displaced: 15000
-    },
-    {
-        id: 'crisis-2',
-        title: 'Earthquake Hits Turkey-Syria Border',
-        type: 'Natural Disaster',
-        severity: 'High',
-        location: 'Gaziantep, Turkey',
-        description: '6.4 magnitude earthquake strikes southern Turkey near Syrian border, causing significant damage to infrastructure.',
-        image: 'https://images.unsplash.com/photo-1676481040505-9d8a1b1d0e4b?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=800&q=80',
-        date: '2023-06-14T08:15:00Z',
-        casualties: 42,
-        displaced: 8000
-    },
-    {
-        id: 'crisis-3',
-        title: 'Cholera Outbreak in Malawi',
-        type: 'Health',
-        severity: 'Medium',
-        location: 'Lilongwe, Malawi',
-        description: 'Health authorities report over 1,200 cholera cases in the capital region with limited medical supplies available.',
-        image: 'https://images.unsplash.com/photo-1576091160550-2173dba999ef?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=800&q=80',
-        date: '2023-06-13T19:45:00Z',
-        casualties: 18,
-        displaced: 0
-    }
-];
-
-// Sample Alerts
-const liveAlerts = [
-    "Heavy fighting reported in Sudan - 120+ casualties",
-    "Earthquake hits Turkey-Syria border region - 6.4 magnitude",
-    "Tropical cyclone approaching Bangladesh coast - Evacuations underway"
-];
+//Hello
+// API Configuration
+const API_KEYS = {
+    CURRENTS_API: 'PSDBZLYJip4hSnvuXcqbJYqkL3_wJl50_21anNvZgq8C5yLv'
+};
 
 // Initialize the page
 document.addEventListener('DOMContentLoaded', () => {
-    renderCrisisFeed();
-    rotateLiveAlerts();
+    loadData();
     
     // Set up event listeners
-    refreshBtn.addEventListener('click', refreshData);
+    refreshBtn.addEventListener('click', loadData);
     alertBadge.addEventListener('click', showAlerts);
     timeFilter.addEventListener('change', filterByTime);
     navButtons.forEach(button => {
@@ -67,29 +24,148 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 });
 
-// Render crisis feed
-function renderCrisisFeed() {
-    crisisFeed.innerHTML = crisisData.map(crisis => `
-        <div class="crisis-card" onclick="window.location.href='details.html?id=${crisis.id}'">
-            <div class="crisis-image" style="background-image: url('${crisis.image}')">
-                <span class="crisis-badge ${crisis.severity.toLowerCase()}">${crisis.severity}</span>
-            </div>
-            <div class="crisis-content">
-                <h3 class="crisis-title">${crisis.title}</h3>
-                <div class="crisis-meta">
-                    <span><i class="fas fa-map-marker-alt"></i> ${crisis.location}</span>
-                    <span><i class="far fa-clock"></i> ${formatRelativeTime(crisis.date)}</span>
-                </div>
-                <p class="crisis-desc">${crisis.description}</p>
-                <button class="view-details-btn">
-                    View Details <i class="fas fa-arrow-right"></i>
-                </button>
-            </div>
-        </div>
-    `).join('');
+// Main data loader
+async function loadData() {
+    refreshBtn.querySelector('i').classList.add('fa-spin');
+    
+    try {
+        const [disasters, news] = await Promise.all([
+            fetchDisasters(),
+            fetchCurrentsNews()
+        ]);
+        
+        // Combine and format data to match your original structure
+        const allCrises = [...disasters, ...news].map(item => ({
+            id: item.id,
+            title: item.title,
+            type: item.type,
+            severity: item.severity,
+            location: item.location,
+            description: item.description,
+            image: item.image,
+            date: item.date,
+            url: item.url || '#',
+            casualties: item.casualties || 0,
+            displaced: item.displaced || 0
+        }));
+        
+        renderCrisisFeed(allCrises);
+        updateLiveAlerts(allCrises);
+        
+    } catch (error) {
+        console.error("Data load error:", error);
+        crisisFeed.innerHTML = '<div class="error-message">⚠️ Failed to load data. Please try again.</div>';
+    } finally {
+        refreshBtn.querySelector('i').classList.remove('fa-spin');
+    }
 }
 
-// Format relative time
+// NASA EONET - Natural Disasters
+async function fetchDisasters() {
+    const response = await fetch('https://eonet.gsfc.nasa.gov/api/v3/events?days=30&limit=5');
+    const data = await response.json();
+    
+    return data.events.map(event => {
+        const category = event.categories[0]?.title || 'Natural Disaster';
+        return {
+            id: event.id,
+            title: event.title,
+            type: category,
+            severity: getSeverity(event.categories[0]?.id),
+            location: getEventLocation(event),
+            description: event.description || `${category} occurring in ${getEventLocation(event)}`,
+            image: getDisasterImage(event.categories[0]?.id),
+            date: event.geometry[0]?.date || new Date().toISOString(),
+            url: `https://eonet.gsfc.nasa.gov/api/v3/events/${event.id}`,
+            casualties: estimateCasualties(event.categories[0]?.id),
+            displaced: estimateDisplaced(event.categories[0]?.id)
+        };
+    });
+}
+
+// CurrentsAPI Implementation
+async function fetchCurrentsNews() {
+    const response = await fetch(
+        `https://api.currentsapi.services/v1/search?keywords=conflict OR disaster OR crisis&language=en&apiKey=${API_KEYS.CURRENTS_API}`
+    );
+    const data = await response.json();
+    
+    return data.news?.map(article => ({
+        id: article.id,
+        title: article.title,
+        type: 'News Report',
+        severity: article.description.toLowerCase().includes('emergency') ? 'Critical' : 'High',
+        location: article.country?.[0] || 'Global',
+        description: article.description || 'Latest crisis report',
+        image: article.image || getRandomNewsImage(),
+        date: article.published || new Date().toISOString(),
+        url: article.url,
+        casualties: 0, // News API doesn't provide these
+        displaced: 0   // News API doesn't provide these
+    })) || [];
+}
+
+// Helper functions
+function getSeverity(categoryId) {
+    const criticalCategories = ['severeStorms', 'wildfires', 'volcanoes', 'earthquakes'];
+    return criticalCategories.includes(categoryId) ? 'Critical' : 'High';
+}
+
+function getEventLocation(event) {
+    if (event.geometry?.[0]?.coordinates) {
+        return `${event.geometry[0].coordinates[1].toFixed(2)}°N, ${event.geometry[0].coordinates[0].toFixed(2)}°E`;
+    }
+    return 'Global';
+}
+
+function getDisasterImage(categoryId) {
+    const images = {
+        wildfires: 'https://images.unsplash.com/photo-1586348943529-beaae6c28db9?w=800',
+        severeStorms: 'https://images.unsplash.com/photo-1501426026826-31c667bdf23d?w=800',
+        earthquakes: 'https://images.unsplash.com/photo-1542228262-3d663b306a53?w=800',
+        floods: 'https://images.unsplash.com/photo-1580013759032-c96505e24c1f?w=800',
+        volcanoes: 'https://images.unsplash.com/photo-1619266465172-02a857c3556d?w=800',
+        default: 'https://images.unsplash.com/photo-1519125323398-675f0ddb6308?w=800'
+    };
+    return images[categoryId] || images.default;
+}
+
+function getRandomNewsImage() {
+    const images = [
+        'https://images.unsplash.com/photo-1589652717521-10c0d09aafd3?w=800',
+        'https://images.unsplash.com/photo-1507676186452-d11cb49d0474?w=800',
+        'https://images.unsplash.com/photo-1508784411316-02b8cd4d3a3a?w=800'
+    ];
+    return images[Math.floor(Math.random() * images.length)];
+}
+
+function estimateCasualties(categoryId) {
+    // Simple estimation based on disaster type
+    const estimates = {
+        wildfires: 5,
+        severeStorms: 20,
+        earthquakes: 50,
+        floods: 30,
+        volcanoes: 10,
+        default: 0
+    };
+    return estimates[categoryId] || estimates.default;
+}
+
+function estimateDisplaced(categoryId) {
+    // Simple estimation based on disaster type
+    const estimates = {
+        wildfires: 1000,
+        severeStorms: 5000,
+        earthquakes: 10000,
+        floods: 8000,
+        volcanoes: 2000,
+        default: 0
+    };
+    return estimates[categoryId] || estimates.default;
+}
+
+// Format relative time (keep your existing implementation)
 function formatRelativeTime(dateString) {
     const now = new Date();
     const date = new Date(dateString);
@@ -114,43 +190,67 @@ function formatRelativeTime(dateString) {
     return 'Just now';
 }
 
-// Rotate live alerts
-function rotateLiveAlerts() {
+// Render crisis feed (maintaining your original format)
+function renderCrisisFeed(data) {
+    crisisFeed.innerHTML = data.map(item => `
+        <div class="crisis-card" onclick="window.location.href='${item.url}'">
+            <div class="crisis-image" style="background-image: url('${item.image}')">
+                <span class="crisis-badge ${item.severity.toLowerCase()}">${item.severity}</span>
+            </div>
+            <div class="crisis-content">
+                <h3 class="crisis-title">${item.title}</h3>
+                <div class="crisis-meta">
+                    <span><i class="fas fa-map-marker-alt"></i> ${item.location}</span>
+                    <span><i class="far fa-clock"></i> ${formatRelativeTime(item.date)}</span>
+                </div>
+                <p class="crisis-desc">${item.description}</p>
+                <button class="view-details-btn">
+                    View Details <i class="fas fa-arrow-right"></i>
+                </button>
+            </div>
+        </div>
+    `).join('');
+}
+
+// Live alerts system
+function updateLiveAlerts(crises) {
+    const criticalAlerts = crises.filter(crisis => crisis.severity === 'Critical');
     let currentAlert = 0;
-    setInterval(() => {
-        liveAlertText.innerHTML = `<span>${liveAlerts[currentAlert]}</span>`;
-        currentAlert = (currentAlert + 1) % liveAlerts.length;
-    }, 5000);
+    
+    if (criticalAlerts.length > 0) {
+        // Initial alert
+        liveAlertText.innerHTML = `<span>${criticalAlerts[currentAlert].title} - ${criticalAlerts[currentAlert].location}</span>`;
+        
+        // Rotate alerts
+        setInterval(() => {
+            currentAlert = (currentAlert + 1) % criticalAlerts.length;
+            liveAlertText.innerHTML = `<span>${criticalAlerts[currentAlert].title} - ${criticalAlerts[currentAlert].location}</span>`;
+        }, 5000);
+    } else {
+        liveAlertText.innerHTML = '<span>No critical alerts currently</span>';
+    }
+    
+    // Update alert badge
+    alertBadge.querySelector('.alert-count').textContent = criticalAlerts.length;
 }
 
-// Refresh data
-function refreshData() {
-    // Simulate refresh
-    refreshBtn.querySelector('i').classList.add('fa-spin');
-    setTimeout(() => {
-        refreshBtn.querySelector('i').classList.remove('fa-spin');
-        // In a real app, you would fetch new data here
-        console.log('Data refreshed');
-    }, 1000);
-}
-
-// Show alerts
-function showAlerts() {
-    // In a real app, this would open a modal with alerts
-    console.log('Showing alerts');
-}
-
-// Filter by time
+// Filter by time (placeholder)
 function filterByTime() {
     const value = timeFilter.value;
     console.log(`Filtering by: ${value}`);
     // In a real app, you would filter the crisis data
 }
 
-// Filter by type
+// Filter by type (placeholder)
 function filterByType(type) {
     navButtons.forEach(button => button.classList.remove('active'));
     event.target.classList.add('active');
     console.log(`Filtering by type: ${type}`);
     // In a real app, you would filter the crisis data
+}
+
+// Show alerts (placeholder)
+function showAlerts() {
+    console.log('Showing alerts');
+    // In a real app, this would open a modal with alerts
 }
