@@ -5,7 +5,7 @@ const alertBadge = document.getElementById('alert-badge');
 const timeFilter = document.getElementById('time-filter');
 const liveAlertText = document.getElementById('live-alert-text');
 const navButtons = document.querySelectorAll('.nav-btn');
-
+//Hello
 // API Configuration
 const API_KEYS = {
     CURRENTS_API: 'PSDBZLYJip4hSnvuXcqbJYqkL3_wJl50_21anNvZgq8C5yLv'
