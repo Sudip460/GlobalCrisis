@@ -653,6 +653,38 @@ body {
     font-size: 1.1rem;
 }
 
+/* Enhanced Crisis Navigation for Mobile */
+@media (max-width: 640px) {
+    .nav-container {
+        gap: 0.25rem;
+        padding: 0 0.5rem;
+    }
+    
+    .nav-btn {
+        padding: 0.5rem 0.75rem;
+        font-size: 0.75rem;
+    }
+    
+    .nav-btn i {
+        font-size: 0.8rem;
+    }
+    
+    .nav-btn span {
+        display: none;
+    }
+    
+    .nav-btn.active span {
+        display: inline;
+    }
+}
+
+@media (min-width: 641px) and (max-width: 768px) {
+    .nav-btn {
+        padding: 0.5rem 0.75rem;
+        font-size: 0.8rem;
+    }
+}
+
 /* Animations */
 @keyframes pulse {
     0% { transform: scale(1); opacity: 1; }

@@ -5,11 +5,16 @@ const alertBadge = document.getElementById('alert-badge');
 const timeFilter = document.getElementById('time-filter');
 const liveAlertText = document.getElementById('live-alert-text');
 const navButtons = document.querySelectorAll('.nav-btn');
-//Hello
+
 // API Configuration
-const API_KEYS = {
-    CURRENTS_API: 'PSDBZLYJip4hSnvuXcqbJYqkL3_wJl50_21anNvZgq8C5yLv'
-};
+const NEWS_API_KEY = '7be7fb1edcfe41528767920906921cea'; // Replace with your actual NewsAPI key
+
+// Global variables for data and filters
+let allCrisesData = [];
+let currentFilter = 'all';
+let currentTimeFilter = 'all';
+let alertInterval = null;
+let currentAlert = 0;
 
 // Initialize the page
 document.addEventListener('DOMContentLoaded', () => {
@@ -18,9 +23,17 @@ document.addEventListener('DOMContentLoaded', () => {
     // Set up event listeners
     refreshBtn.addEventListener('click', loadData);
     alertBadge.addEventListener('click', showAlerts);
-    timeFilter.addEventListener('change', filterByTime);
+    timeFilter.addEventListener('change', () => {
+        currentTimeFilter = timeFilter.value;
+        filterByTime();
+    });
     navButtons.forEach(button => {
-        button.addEventListener('click', () => filterByType(button.dataset.crisisType));
+        button.addEventListener('click', () => {
+            navButtons.forEach(btn => btn.classList.remove('active'));
+            button.classList.add('active');
+            currentFilter = button.dataset.crisisType;
+            filterByType(currentFilter);
+        });
     });
 });
 
@@ -29,28 +42,45 @@ async function loadData() {
     refreshBtn.querySelector('i').classList.add('fa-spin');
     
     try {
-        const [disasters, news] = await Promise.all([
-            fetchDisasters(),
-            fetchCurrentsNews()
-        ]);
+        const news = await fetchNewsAPI();
+        // Assuming disasters data is available or empty array if not
+        const disasters = []; // Placeholder for disasters data source
         
-        // Combine and format data to match your original structure
-        const allCrises = [...disasters, ...news].map(item => ({
-            id: item.id,
-            title: item.title,
-            type: item.type,
-            severity: item.severity,
-            location: item.location,
-            description: item.description,
-            image: item.image,
-            date: item.date,
-            url: item.url || '#',
-            casualties: item.casualties || 0,
-            displaced: item.displaced || 0
-        }));
+        allCrisesData = [...disasters, ...news].map(item => {
+            // Determine type dynamically for news articles
+            let type = 'other';
+            if (item.title && item.description) {
+                const lowerTitle = item.title.toLowerCase();
+                const lowerDesc = item.description.toLowerCase();
+                if (lowerTitle.includes('conflict') || lowerDesc.includes('conflict') || 
+                    lowerTitle.includes('war') || lowerDesc.includes('war')) {
+                    type = 'conflict';
+                } else if (lowerTitle.includes('disaster') || lowerDesc.includes('disaster') || 
+                           lowerTitle.includes('earthquake') || lowerDesc.includes('earthquake') ||
+                           lowerTitle.includes('flood') || lowerDesc.includes('flood')) {
+                    type = 'disaster';
+                } else if (lowerTitle.includes('crisis') || lowerDesc.includes('crisis')) {
+                    type = 'crisis';
+                } else if (lowerTitle.includes('emergency') || lowerDesc.includes('emergency')) {
+                    type = 'emergency';
+                }
+            } else if (item.type) {
+                type = item.type.toLowerCase();
+            }
+            
+            return {
+                ...item,
+                type: type.toLowerCase(),
+                severity: item.severity || 'Low',
+                casualties: item.casualties || 0,
+                displaced: item.displaced || 0,
+                url: item.url || '#'
+            };
+        });
         
-        renderCrisisFeed(allCrises);
-        updateLiveAlerts(allCrises);
+        filterByTime(); // Apply filters and render
+        
+        updateLiveAlerts(allCrisesData);
         
     } catch (error) {
         console.error("Data load error:", error);
@@ -60,76 +90,38 @@ async function loadData() {
     }
 }
 
-// NASA EONET - Natural Disasters
-async function fetchDisasters() {
-    const response = await fetch('https://eonet.gsfc.nasa.gov/api/v3/events?days=30&limit=5');
-    const data = await response.json();
-    
-    return data.events.map(event => {
-        const category = event.categories[0]?.title || 'Natural Disaster';
-        return {
-            id: event.id,
-            title: event.title,
-            type: category,
-            severity: getSeverity(event.categories[0]?.id),
-            location: getEventLocation(event),
-            description: event.description || `${category} occurring in ${getEventLocation(event)}`,
-            image: getDisasterImage(event.categories[0]?.id),
-            date: event.geometry[0]?.date || new Date().toISOString(),
-            url: `https://eonet.gsfc.nasa.gov/api/v3/events/${event.id}`,
-            casualties: estimateCasualties(event.categories[0]?.id),
-            displaced: estimateDisplaced(event.categories[0]?.id)
-        };
-    });
-}
+// Fetch recent news using NewsAPI
+async function fetchNewsAPI() {
+    const url = `https://newsapi.org/v2/everything?q=conflict OR disaster OR crisis&language=en&sortBy=publishedAt&apiKey=${NEWS_API_KEY}`;
+    try {
+        const response = await fetch(url);
+        const data = await response.json();
 
-// CurrentsAPI Implementation
-async function fetchCurrentsNews() {
-    const response = await fetch(
-        `https://api.currentsapi.services/v1/search?keywords=conflict OR disaster OR crisis&language=en&apiKey=${API_KEYS.CURRENTS_API}`
-    );
-    const data = await response.json();
-    
-    return data.news?.map(article => ({
-        id: article.id,
-        title: article.title,
-        type: 'News Report',
-        severity: article.description.toLowerCase().includes('emergency') ? 'Critical' : 'High',
-        location: article.country?.[0] || 'Global',
-        description: article.description || 'Latest crisis report',
-        image: article.image || getRandomNewsImage(),
-        date: article.published || new Date().toISOString(),
-        url: article.url,
-        casualties: 0, // News API doesn't provide these
-        displaced: 0   // News API doesn't provide these
-    })) || [];
+        if (data.status === 'ok') {
+            return data.articles.map(article => ({
+                id: article.url, // Use the URL as a unique ID
+                title: article.title,
+                type: 'News Report',
+                severity: article.description?.toLowerCase().includes('emergency') ? 'Critical' : 'High',
+                location: article.source.name || 'Global',
+                description: article.description || 'Latest crisis report',
+                image: article.urlToImage || getRandomNewsImage(),
+                date: article.publishedAt || new Date().toISOString(),
+                url: article.url,
+                casualties: 0, // NewsAPI doesn't provide these
+                displaced: 0   // NewsAPI doesn't provide these
+            }));
+        } else {
+            console.error('NewsAPI error:', data.message);
+            return [];
+        }
+    } catch (error) {
+        console.error('Failed to fetch news from NewsAPI:', error);
+        return [];
+    }
 }
 
 // Helper functions
-function getSeverity(categoryId) {
-    const criticalCategories = ['severeStorms', 'wildfires', 'volcanoes', 'earthquakes'];
-    return criticalCategories.includes(categoryId) ? 'Critical' : 'High';
-}
-
-function getEventLocation(event) {
-    if (event.geometry?.[0]?.coordinates) {
-        return `${event.geometry[0].coordinates[1].toFixed(2)}°N, ${event.geometry[0].coordinates[0].toFixed(2)}°E`;
-    }
-    return 'Global';
-}
-
-function getDisasterImage(categoryId) {
-    const images = {
-        wildfires: 'https://images.unsplash.com/photo-1586348943529-beaae6c28db9?w=800',
-        severeStorms: 'https://images.unsplash.com/photo-1501426026826-31c667bdf23d?w=800',
-        earthquakes: 'https://images.unsplash.com/photo-1542228262-3d663b306a53?w=800',
-        floods: 'https://images.unsplash.com/photo-1580013759032-c96505e24c1f?w=800',
-        volcanoes: 'https://images.unsplash.com/photo-1619266465172-02a857c3556d?w=800',
-        default: 'https://images.unsplash.com/photo-1519125323398-675f0ddb6308?w=800'
-    };
-    return images[categoryId] || images.default;
-}
-
 function getRandomNewsImage() {
     const images = [
         'https://images.unsplash.com/photo-1589652717521-10c0d09aafd3?w=800',
@@ -137,32 +129,6 @@ function getRandomNewsImage() {
         'https://images.unsplash.com/photo-1508784411316-02b8cd4d3a3a?w=800'
     ];
     return images[Math.floor(Math.random() * images.length)];
-}
-
-function estimateCasualties(categoryId) {
-    // Simple estimation based on disaster type
-    const estimates = {
-        wildfires: 5,
-        severeStorms: 20,
-        earthquakes: 50,
-        floods: 30,
-        volcanoes: 10,
-        default: 0
-    };
-    return estimates[categoryId] || estimates.default;
-}
-
-function estimateDisplaced(categoryId) {
-    // Simple estimation based on disaster type
-    const estimates = {
-        wildfires: 1000,
-        severeStorms: 5000,
-        earthquakes: 10000,
-        floods: 8000,
-        volcanoes: 2000,
-        default: 0
-    };
-    return estimates[categoryId] || estimates.default;
 }
 
 // Format relative time (keep your existing implementation)
@@ -214,39 +180,58 @@ function renderCrisisFeed(data) {
 
 // Live alerts system
 function updateLiveAlerts(crises) {
-    const criticalAlerts = crises.filter(crisis => crisis.severity === 'Critical');
-    let currentAlert = 0;
+    const criticalAlerts = crises.filter(crisis => crisis.severity.toLowerCase() === 'critical');
+    
+    if (alertInterval) {
+        clearInterval(alertInterval);
+        alertInterval = null;
+    }
     
     if (criticalAlerts.length > 0) {
-        // Initial alert
+        currentAlert = 0;
         liveAlertText.innerHTML = `<span>${criticalAlerts[currentAlert].title} - ${criticalAlerts[currentAlert].location}</span>`;
+        alertBadge.querySelector('.alert-count').textContent = criticalAlerts.length;
+        alertBadge.style.display = 'flex';  // Show when alerts exist
         
-        // Rotate alerts
-        setInterval(() => {
+        alertInterval = setInterval(() => {
             currentAlert = (currentAlert + 1) % criticalAlerts.length;
             liveAlertText.innerHTML = `<span>${criticalAlerts[currentAlert].title} - ${criticalAlerts[currentAlert].location}</span>`;
         }, 5000);
     } else {
         liveAlertText.innerHTML = '<span>No critical alerts currently</span>';
+        alertBadge.style.display = 'none';  // Hide when no alerts
+    }
+}
+
+// Filter by time
+function filterByTime() {
+    let filteredData = allCrisesData;
+    const now = new Date();
+    
+    if (currentTimeFilter === 'last24hours') {
+        filteredData = filteredData.filter(item => {
+            const itemDate = new Date(item.date);
+            return (now - itemDate) <= 24 * 60 * 60 * 1000;
+        });
+    } else if (currentTimeFilter === 'last7days') {
+        filteredData = filteredData.filter(item => {
+            const itemDate = new Date(item.date);
+            return (now - itemDate) <= 7 * 24 * 60 * 60 * 1000;
+        });
     }
     
-    // Update alert badge
-    alertBadge.querySelector('.alert-count').textContent = criticalAlerts.length;
+    filterByType(currentFilter, filteredData);
 }
 
-// Filter by time (placeholder)
-function filterByTime() {
-    const value = timeFilter.value;
-    console.log(`Filtering by: ${value}`);
-    // In a real app, you would filter the crisis data
-}
-
-// Filter by type (placeholder)
-function filterByType(type) {
-    navButtons.forEach(button => button.classList.remove('active'));
-    event.target.classList.add('active');
-    console.log(`Filtering by type: ${type}`);
-    // In a real app, you would filter the crisis data
+// Filter by type
+function filterByType(type, data = allCrisesData) {
+    let filteredData = data;
+    
+    if (type !== 'all') {
+        filteredData = data.filter(crisis => crisis.type === type);
+    }
+    
+    renderCrisisFeed(filteredData);
 }
 
 // Show alerts (placeholder)
@@ -254,3 +239,4 @@ function showAlerts() {
     console.log('Showing alerts');
     // In a real app, this would open a modal with alerts
 }
+
