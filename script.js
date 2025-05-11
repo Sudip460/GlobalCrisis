@@ -7,7 +7,7 @@ const liveAlertText = document.getElementById('live-alert-text');
 const navButtons = document.querySelectorAll('.nav-btn');
 
 // API Configuration
-const NEWS_API_KEY = '7be7fb1edcfe41528767920906921cea'; // Replace with your actual NewsAPI key
+const NEWS_API_KEY = '7be7fb1edcfe41528767920906921cea'; 
 
 // Global variables for data and filters
 let allCrisesData = [];
