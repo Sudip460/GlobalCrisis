@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Global Crisis Tracker - Analytics</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Chart.js for visualizations -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Leaflet for maps -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.3/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js"></script>
+    <!-- Heatmap plugin -->
+    <script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
+</head>
+<body>
+    <!-- Animated Background -->
+    <div class="animated-bg"></div>
+    
+    <!-- Main Container -->
+    <div class="container">
+        <!-- Glassmorphism Header -->
+        <header class="app-header">
+            <div class="header-content">
+                <div class="logo">
+                    <div class="logo-icon">
+                        <i class="fas fa-globe-americas"></i>
+                    </div>
+                    <h1>Global Crisis <span>Analytics</span></h1>
+                </div>
+            </div>
+            
+            <!-- Analytics Navigation -->
+            <nav class="crisis-nav">  <!-- Reused from main style -->
+                <div class="nav-container">
+                    <button class="nav-btn active" data-view="overview">
+                        <i class="fas fa-chart-pie"></i>
+                        <span>Overview</span>
+                    </button>
+                    <button class="nav-btn" data-view="trends">
+                        <i class="fas fa-chart-line"></i>
+                        <span>Trends</span>
+                    </button>
+                    <button class="nav-btn" data-view="heatmap">
+                        <i class="fas fa-fire"></i>
+                        <span>Heatmap</span>
+                    </button>
+                </div>
+            </nav>
+        </header>
+
+        <!-- Main Content -->
+        <main class="app-main">  <!-- Reused from main style -->
+            <!-- Overview Section -->
+            <section class="analytics-section active" id="overview-section">
+                <div class="section-header">
+                    <h2><i class="fas fa-chart-pie"></i> Crisis Overview</h2>
+                    <div class="time-filter">
+                        <select id="overview-time-filter">
+                            <option value="7d">Last 7 Days</option>
+                            <option value="30d">Last 30 Days</option>
+                            <option value="90d">Last 90 Days</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="stats-overview">  <!-- Reused from main style -->
+                    <div class="stat-card critical">
+                        <div class="stat-icon">
+                            <i class="fas fa-chart-pie"></i>
+                        </div>
+                        <div class="stat-content">
+                            <h3>Data Coverage</h3>
+                            <p class="stat-value">92%</p>
+                            <p class="stat-change"><i class="fas fa-arrow-up"></i> 5% this month</p>
+                        </div>
+                    </div>
+                    <div class="stat-card displaced">
+                        <div class="stat-icon">
+                            <i class="fas fa-database"></i>
+                        </div>
+                        <div class="stat-content">
+                            <h3>Data Points</h3>
+                            <p class="stat-value">14.8K</p>
+                            <p class="stat-change"><i class="fas fa-arrow-up"></i> 1.2K today</p>
+                        </div>
+                    </div>
+                    <div class="stat-card countries">
+                        <div class="stat-icon">
+                            <i class="fas fa-globe-europe"></i>
+                        </div>
+                        <div class="stat-content">
+                            <h3>Countries</h3>
+                            <p class="stat-value">68</p>
+                            <p class="stat-change"><i class="fas fa-arrow-down"></i> 2 resolved</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="dashboard">  <!-- Reused from main style -->
+                    <div class="analytics-card">
+                        <h3><i class="fas fa-chart-pie"></i> Crisis Type Distribution</h3>
+                        <div class="chart-container">
+                            <canvas id="typeChart"></canvas>
+                        </div>
+                    </div>
+                    <div class="analytics-card">
+                        <h3><i class="fas fa-exclamation-triangle"></i> Severity Levels</h3>
+                        <div class="chart-container">
+                            <canvas id="severityChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Trends Section -->
+            <section class="analytics-section" id="trends-section">
+                <div class="section-header">
+                    <h2><i class="fas fa-chart-line"></i> Crisis Trends</h2>
+                    <div class="time-filter">
+                        <select id="trend-time-range">
+                            <option value="30d">Last 30 Days</option>
+                            <option value="90d">Last 90 Days</option>
+                            <option value="1y">Last Year</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="analytics-card full-width">
+                    <h3><i class="fas fa-chart-line"></i> Global Crisis Trend</h3>
+                    <div class="chart-container">
+                        <canvas id="trendsChart"></canvas>
+                    </div>
+                </div>
+                
+                <div class="dashboard">
+                    <div class="analytics-card">
+                        <h3><i class="fas fa-fighter-jet"></i> Conflict Trend</h3>
+                        <div class="chart-container">
+                            <canvas id="conflictTrendChart"></canvas>
+                        </div>
+                    </div>
+                    <div class="analytics-card">
+                        <h3><i class="fas fa-volcano"></i> Disaster Trend</h3>
+                        <div class="chart-container">
+                            <canvas id="disasterTrendChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Heatmap Section -->
+            <section class="analytics-section" id="heatmap-section">
+                <div class="section-header">
+                    <h2><i class="fas fa-fire"></i> Global Crisis Heatmap</h2>
+                    <div class="time-filter">
+                        <select id="heatmap-metric">
+                            <option value="intensity">Crisis Intensity</option>
+                            <option value="casualties">Casualties</option>
+                            <option value="displaced">Displaced</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="analytics-card full-width">
+                    <div id="heatmap-container"></div>
+                </div>
+                
+                <div class="stats-overview">
+                    <div class="stat-card critical">
+                        <div class="stat-icon">
+                            <i class="fas fa-fire"></i>
+                        </div>
+                        <div class="stat-content">
+                            <h3>Hotspots</h3>
+                            <p class="stat-value">18</p>
+                            <p class="stat-change"><i class="fas fa-arrow-up"></i> 3 today</p>
+                        </div>
+                    </div>
+                    <div class="stat-card displaced">
+                        <div class="stat-icon">
+                            <i class="fas fa-map-marked-alt"></i>
+                        </div>
+                        <div class="stat-content">
+                            <h3>Regions</h3>
+                            <p class="stat-value">6</p>
+                            <p class="stat-change"><i class="fas fa-arrow-down"></i> 1 resolved</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <!-- Footer Navigation -->
+        <footer class="app-footer">
+            <button class="footer-btn" onclick="window.location.href='index.html'">
+                <i class="fas fa-home"></i>
+                <span>Home</span>
+            </button>
+            <button class="footer-btn" onclick="window.location.href='https://www.cfr.org/global-conflict-tracker'">
+                <i class="fas fa-map"></i>
+                <span>Map</span>
+            </button>
+            <button class="footer-btn active">
+                <i class="fas fa-chart-pie"></i>
+                <span>Analytics</span>
+            </button>
+        </footer>
+    </div>
+
+    <!-- JavaScript -->
+    <script src="script.js"></script>
+    <script src="analytics.js"></script>
+</body>
+</html>

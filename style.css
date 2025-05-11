@@ -28,6 +28,7 @@
     margin: 0;
     padding: 0;
     box-sizing: border-box;
+    
 }
 
 body {
@@ -276,6 +277,7 @@ body {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
     gap: 1rem;
+    margin-bottom: 3.5rem;
 }
 
 .stat-card {
@@ -694,4 +696,122 @@ body {
 
 .pulse {
     animation: pulse 1.5s infinite;
+}
+
+/* ======================
+   ANALYTICS PAGE STYLES
+   ====================== */
+
+/* Analytics Sections */
+.analytics-section {
+    display: none;
+    padding: 1rem 0;
+}
+
+.analytics-section.active {
+    display: block;
+    animation: fadeIn 0.5s ease;
+}
+
+/* Analytics Cards */
+.analytics-card {
+    background: var(--glass-bg);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid var(--glass-border);
+    border-radius: 12px;
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+    transition: var(--transition-normal);
+}
+
+.analytics-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+}
+
+.analytics-card h3 {
+    font-size: 1rem;
+    font-weight: 600;
+    margin-bottom: 1.5rem;
+    color: white;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.analytics-card.full-width {
+    width: 100%;
+}
+
+/* Chart Containers */
+.chart-container {
+    position: relative;
+    height: 300px;
+    width: 100%;
+}
+
+/* Heatmap Container */
+#heatmap-container {
+    height: 500px;
+    width: 100%;
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+/* Leaflet Map Overrides */
+.leaflet-container {
+    background: var(--darker) !important;
+}
+
+.leaflet-control {
+    background: var(--glass-bg) !important;
+    backdrop-filter: blur(10px) !important;
+    -webkit-backdrop-filter: blur(10px) !important;
+    border: 1px solid var(--glass-border) !important;
+    color: white !important;
+}
+
+.leaflet-control-zoom a {
+    color: white !important;
+    background: rgba(255, 255, 255, 0.1) !important;
+}
+
+.leaflet-control-zoom a:hover {
+    background: rgba(255, 255, 255, 0.2) !important;
+}
+
+/* Responsive Adjustments */
+@media (max-width: 768px) {
+    .chart-container {
+        height: 250px;
+    }
+    
+    #heatmap-container {
+        height: 400px;
+    }
+    
+    .analytics-card {
+        padding: 1rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .chart-container {
+        height: 200px;
+    }
+    
+    #heatmap-container {
+        height: 300px;
+    }
+    
+    .analytics-card h3 {
+        font-size: 0.9rem;
+    }
+}
+
+/* Animation for section transitions */
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
 }
