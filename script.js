@@ -16,7 +16,6 @@ let currentTimeFilter = 'all';
 let alertInterval = null;
 let currentAlert = 0;
 
-// Initialize the page
 document.addEventListener('DOMContentLoaded', () => {
     loadData();
     
@@ -35,6 +34,29 @@ document.addEventListener('DOMContentLoaded', () => {
             filterByType(currentFilter);
         });
     });
+
+    // Add event listener for live alert refresh button
+    const refreshAlertBtn = document.getElementById('refresh-alert-btn');
+    if (refreshAlertBtn) {
+        refreshAlertBtn.addEventListener('click', async () => {
+            if (alertInterval) {
+                clearInterval(alertInterval);
+                alertInterval = null;
+            }
+            refreshAlertBtn.disabled = true;
+            refreshAlertBtn.querySelector('i').classList.add('fa-spin');
+            try {
+                await loadData();
+            } catch (error) {
+                console.error('Error refreshing live alerts:', error);
+            } finally {
+                refreshAlertBtn.disabled = false;
+                refreshAlertBtn.querySelector('i').classList.remove('fa-spin');
+            }
+            // Restart interval
+            alertInterval = setInterval(showNextCriticalAlert, 2000);
+        });
+    }
 });
 
 // Main data loader
@@ -59,6 +81,18 @@ async function loadData() {
                            lowerTitle.includes('earthquake') || lowerDesc.includes('earthquake') ||
                            lowerTitle.includes('flood') || lowerDesc.includes('flood')) {
                     type = 'disaster';
+                } else if (lowerTitle.includes('health') || lowerDesc.includes('health') ||
+                           lowerTitle.includes('virus') || lowerDesc.includes('virus') ||
+                           lowerTitle.includes('pandemic') || lowerDesc.includes('pandemic') ||
+                           lowerTitle.includes('disease') || lowerDesc.includes('disease') ||
+                           lowerTitle.includes('covid') || lowerDesc.includes('covid')) {
+                    type = 'health';
+                } else if (lowerTitle.includes('business') || lowerDesc.includes('business') ||
+                           lowerTitle.includes('economy') || lowerDesc.includes('economy') ||
+                           lowerTitle.includes('market') || lowerDesc.includes('market') ||
+                           lowerTitle.includes('finance') || lowerDesc.includes('finance') ||
+                           lowerTitle.includes('stock') || lowerDesc.includes('stock')) {
+                    type = 'business';
                 } else if (lowerTitle.includes('crisis') || lowerDesc.includes('crisis')) {
                     type = 'crisis';
                 } else if (lowerTitle.includes('emergency') || lowerDesc.includes('emergency')) {
@@ -92,7 +126,7 @@ async function loadData() {
 
 // Fetch recent news using NewsAPI
 async function fetchNewsAPI() {
-    const url = `https://newsapi.org/v2/everything?q=conflict OR disaster OR crisis&language=en&sortBy=publishedAt&apiKey=${NEWS_API_KEY}`;
+    const url = `https://newsapi.org/v2/everything?q=conflict OR disaster OR crisis OR emergency OR health OR business&language=en&sortBy=publishedAt&apiKey=${NEWS_API_KEY}`;
     try {
         const response = await fetch(url);
         const data = await response.json();
@@ -178,7 +212,6 @@ function renderCrisisFeed(data) {
     `).join('');
 }
 
-// Live alerts system
 function updateLiveAlerts(crises) {
     const criticalAlerts = crises.filter(crisis => crisis.severity.toLowerCase() === 'critical');
     
@@ -193,13 +226,15 @@ function updateLiveAlerts(crises) {
         alertBadge.querySelector('.alert-count').textContent = criticalAlerts.length;
         alertBadge.style.display = 'flex';  // Show when alerts exist
         
-        alertInterval = setInterval(() => {
-            currentAlert = (currentAlert + 1) % criticalAlerts.length;
-            liveAlertText.innerHTML = `<span>${criticalAlerts[currentAlert].title} - ${criticalAlerts[currentAlert].location}</span>`;
-        }, 5000);
+        alertInterval = setInterval(showNextCriticalAlert, 2000);
     } else {
         liveAlertText.innerHTML = '<span>No critical alerts currently</span>';
         alertBadge.style.display = 'none';  // Hide when no alerts
+    }
+
+    function showNextCriticalAlert() {
+        currentAlert = (currentAlert + 1) % criticalAlerts.length;
+        liveAlertText.innerHTML = `<span>${criticalAlerts[currentAlert].title} - ${criticalAlerts[currentAlert].location}</span>`;
     }
 }
 
@@ -208,15 +243,20 @@ function filterByTime() {
     let filteredData = allCrisesData;
     const now = new Date();
     
-    if (currentTimeFilter === 'last24hours') {
+    if (currentTimeFilter === '24h') {
         filteredData = filteredData.filter(item => {
             const itemDate = new Date(item.date);
             return (now - itemDate) <= 24 * 60 * 60 * 1000;
         });
-    } else if (currentTimeFilter === 'last7days') {
+    } else if (currentTimeFilter === '7d') {
         filteredData = filteredData.filter(item => {
             const itemDate = new Date(item.date);
             return (now - itemDate) <= 7 * 24 * 60 * 60 * 1000;
+        });
+    } else if (currentTimeFilter === '30d') {
+        filteredData = filteredData.filter(item => {
+            const itemDate = new Date(item.date);
+            return (now - itemDate) <= 30 * 24 * 60 * 60 * 1000;
         });
     }
     
@@ -239,4 +279,3 @@ function showAlerts() {
     console.log('Showing alerts');
     // In a real app, this would open a modal with alerts
 }
-
