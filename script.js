@@ -16,6 +16,20 @@ let currentTimeFilter = 'all';
 let alertInterval = null;
 let currentAlert = 0;
 
+// Global data storage for analytics
+window.globalCrisisData = {
+  allCrises: [],
+  stats: {
+    critical: 0,
+    displaced: 0,
+    countries: new Set(),
+    types: {},
+    severities: {},
+    locations: [],
+    monthlyTrends: {}
+  }
+};
+
 document.addEventListener('DOMContentLoaded', () => {
     loadData();
     
@@ -65,9 +79,19 @@ async function loadData() {
     
     try {
         const news = await fetchNewsAPI();
-        // Assuming disasters data is available or empty array if not
         const disasters = []; // Placeholder for disasters data source
         
+        // Reset stats
+        window.globalCrisisData.stats = {
+            critical: 0,
+            displaced: 0,
+            countries: new Set(),
+            types: {},
+            severities: {},
+            locations: [],
+            monthlyTrends: {}
+        };
+
         allCrisesData = [...disasters, ...news].map(item => {
             // Determine type dynamically for news articles
             let type = 'other';
@@ -102,18 +126,47 @@ async function loadData() {
                 type = item.type.toLowerCase();
             }
             
+            // Determine severity
+            const severity = item.severity || (type === 'conflict' ? 'High' : 'Medium');
+            
+            // Update statistics
+            if(severity === 'Critical') window.globalCrisisData.stats.critical++;
+            if(item.displaced) window.globalCrisisData.stats.displaced += item.displaced;
+            window.globalCrisisData.stats.countries.add(item.location || 'Global');
+            
+            // Count types
+            window.globalCrisisData.stats.types[type] = 
+                (window.globalCrisisData.stats.types[type] || 0) + 1;
+            
+            // Count severities
+            window.globalCrisisData.stats.severities[severity] = 
+                (window.globalCrisisData.stats.severities[severity] || 0) + 1;
+            
+            // Add to monthly trends
+            const date = new Date(item.date || new Date());
+            const monthYear = `${date.toLocaleString('default', { month: 'short' })} ${date.getFullYear()}`;
+            if (!window.globalCrisisData.stats.monthlyTrends[monthYear]) {
+                window.globalCrisisData.stats.monthlyTrends[monthYear] = 0;
+            }
+            window.globalCrisisData.stats.monthlyTrends[monthYear]++;
+            
             return {
                 ...item,
                 type: type.toLowerCase(),
-                severity: item.severity || 'Low',
+                severity: severity,
                 casualties: item.casualties || 0,
                 displaced: item.displaced || 0,
-                url: item.url || '#'
+                url: item.url || '#',
+                date: item.date || new Date().toISOString()
             };
         });
         
-        filterByTime(); // Apply filters and render
+        window.globalCrisisData.allCrises = allCrisesData;
         
+        // Update stats cards
+        updateStatsCards();
+        
+        filterByTime();
         updateLiveAlerts(allCrisesData);
         
     } catch (error) {
@@ -122,6 +175,16 @@ async function loadData() {
     } finally {
         refreshBtn.querySelector('i').classList.remove('fa-spin');
     }
+}
+
+function updateStatsCards() {
+    const stats = window.globalCrisisData.stats;
+    
+    // Update the stat cards with real data
+    document.querySelector('.stat-card.critical .stat-value').textContent = stats.critical;
+    document.querySelector('.stat-card.displaced .stat-value').textContent = 
+        (stats.displaced / 1000000).toFixed(1) + 'M';
+    document.querySelector('.stat-card.countries .stat-value').textContent = stats.countries.size;
 }
 
 // Fetch recent news using NewsAPI
@@ -133,17 +196,17 @@ async function fetchNewsAPI() {
 
         if (data.status === 'ok') {
             return data.articles.map(article => ({
-                id: article.url, // Use the URL as a unique ID
+                id: article.url,
                 title: article.title,
                 type: 'News Report',
                 severity: article.description?.toLowerCase().includes('emergency') ? 'Critical' : 'High',
-                location: article.source.name || 'Global',
+                location: article.source?.name || 'Global',
                 description: article.description || 'Latest crisis report',
                 image: article.urlToImage || getRandomNewsImage(),
                 date: article.publishedAt || new Date().toISOString(),
                 url: article.url,
-                casualties: 0, // NewsAPI doesn't provide these
-                displaced: 0   // NewsAPI doesn't provide these
+                casualties: 0,
+                displaced: 0
             }));
         } else {
             console.error('NewsAPI error:', data.message);
@@ -165,7 +228,7 @@ function getRandomNewsImage() {
     return images[Math.floor(Math.random() * images.length)];
 }
 
-// Format relative time (keep your existing implementation)
+// Format relative time
 function formatRelativeTime(dateString) {
     const now = new Date();
     const date = new Date(dateString);
@@ -190,7 +253,7 @@ function formatRelativeTime(dateString) {
     return 'Just now';
 }
 
-// Render crisis feed (maintaining your original format)
+// Render crisis feed
 function renderCrisisFeed(data) {
     crisisFeed.innerHTML = data.map(item => `
         <div class="crisis-card" onclick="window.location.href='${item.url}'">
@@ -224,12 +287,12 @@ function updateLiveAlerts(crises) {
         currentAlert = 0;
         liveAlertText.innerHTML = `<span>${criticalAlerts[currentAlert].title} - ${criticalAlerts[currentAlert].location}</span>`;
         alertBadge.querySelector('.alert-count').textContent = criticalAlerts.length;
-        alertBadge.style.display = 'flex';  // Show when alerts exist
+        alertBadge.style.display = 'flex';
         
         alertInterval = setInterval(showNextCriticalAlert, 2000);
     } else {
         liveAlertText.innerHTML = '<span>No critical alerts currently</span>';
-        alertBadge.style.display = 'none';  // Hide when no alerts
+        alertBadge.style.display = 'none';
     }
 
     function showNextCriticalAlert() {
