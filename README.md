@@ -1,5 +1,7 @@
 # 🌍 Global Crisis - Awareness & Information Platform
 
+# 🔗Link :- https://sudip460.github.io/GlobalCrisis/
+
 Welcome to the **Global Crisis** project! This website is built to raise awareness, provide verified information, and offer real-time updates about major global crises — including climate change, pandemics, conflicts, and humanitarian issues.
 
 ## 🧭 Project Overview
